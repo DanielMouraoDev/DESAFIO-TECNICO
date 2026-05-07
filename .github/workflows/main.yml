@@ -9,23 +9,40 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    env:
+      # Força o Django a usar configurações de teste/memória se necessário
+      DEBUG: True
+      DATABASE_URL: sqlite:///:memory: 
     steps:
     - uses: actions/checkout@v4
+
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
         cache: 'pip'
         cache-dependency-path: 'meu-projeto-edu/backend/requirements.txt'
+
     - name: Install dependencies
       run: |
         cd meu-projeto-edu/backend
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-    - name: Run migrations
+        pip install flake8 bandit # Ferramentas de qualidade e segurança
+
+    - name: Run Lint (Qualidade)
       run: |
         cd meu-projeto-edu/backend
-        python manage.py migrate
+        # Para o CI se houver erros de sintaxe ou variáveis não utilizadas
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Aviso para o resto do código seguindo o PEP8
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Security Check (Segurança)
+      run: |
+        cd meu-projeto-edu/backend
+        bandit -r . -x ./tests # Procura vulnerabilidades comuns no Python
+
     - name: Run tests
       run: |
         cd meu-projeto-edu/backend
@@ -35,16 +52,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
         cache-dependency-path: meu-projeto-edu/frontend/package-lock.json
+
     - name: Install dependencies
       run: |
         cd meu-projeto-edu/frontend
         npm ci
+
+    - name: Run Lint & Audit
+      run: |
+        cd meu-projeto-edu/frontend
+        npm run lint --if-present
+        npm audit --audit-level=high # Verifica vulnerabilidades em pacotes npm
+
     - name: Run build
       run: |
         cd meu-projeto-edu/frontend
@@ -54,31 +80,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Cache Flutter dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.pub-cache
-        key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-flutter-
+
     - name: Set up Flutter
       uses: subosito/flutter-action@v2
       with:
         flutter-version: '3.19.0'
+        cache: true # O próprio subosito já gerencia o cache de forma eficiente hoje em dia
+
     - name: Install dependencies
       run: |
         cd meu-projeto-edu/mobile
         flutter pub get
+
+    - name: Static Analysis (Qualidade)
+      run: |
+        cd meu-projeto-edu/mobile
+        flutter analyze
+
     - name: Run tests
       run: |
         cd meu-projeto-edu/mobile
         flutter test
 
   docker:
+    # Este job só roda se o backend e o frontend passarem nos testes
+    needs: [backend, frontend] 
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Build Docker images
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker images (Dry Run)
       run: |
         cd meu-projeto-edu/infra
-        docker-compose build
+        docker compose build
