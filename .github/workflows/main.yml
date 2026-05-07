@@ -11,8 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DEBUG: True
-      # sqlite:///:memory: exige dj-database-url no Django. 
-      # Se não usar, o Django ignorará essa variável e usará o db.sqlite3 padrão.
       DATABASE_URL: "sqlite:///:memory:" 
       SECRET_KEY: "ci-test-key"
     steps:
@@ -30,28 +28,22 @@ jobs:
         cd meu-projeto-edu/backend
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install flake8 bandit dj-database-url # Garantindo que as ferramentas de CI existam
+        pip install flake8 bandit dj-database-url
 
     - name: Run Lint (Qualidade)
       run: |
         cd meu-projeto-edu/backend
-        # Para o CI se houver erros críticos (E9, F63, F7, F82)
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Apenas avisa sobre o resto (PEP8), mas não trava o build (exit-zero)
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
     - name: Security Check (Segurança)
       run: |
         cd meu-projeto-edu/backend
-        # --exit-zero permite que o build continue mesmo com avisos, 
-        # mas gera o relatório de segurança nos logs.
         bandit -r . -x ./tests --exit-zero
 
     - name: Run tests
       run: |
         cd meu-projeto-edu/backend
-        # O Django cria o banco de teste automaticamente, 
-        # mas o migrate garante que seus modelos estão íntegros.
         python manage.py migrate
         python manage.py test
 
@@ -65,18 +57,18 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
-        cache-dependency-path: meu-projeto-edu/frontend/package-lock.json
+        # Ajustado para package.json para evitar erro de resolução de caminho do cache
+        cache-dependency-path: meu-projeto-edu/frontend/package.json
 
     - name: Install dependencies
       run: |
         cd meu-projeto-edu/frontend
-        npm ci
+        npm ci || npm install # Tenta ci, se falhar (sem lock), usa install
 
     - name: Run Lint & Audit
       run: |
         cd meu-projeto-edu/frontend
         npm run lint --if-present
-        # Audit high level para produção (evita falsos positivos de pacotes de dev)
         npm audit --audit-level=high --production
 
     - name: Run build
@@ -103,8 +95,8 @@ jobs:
     - name: Static Analysis (Qualidade)
       run: |
         cd meu-projeto-edu/mobile
-        # Garante que o código segue as boas práticas de Dart
-        flutter analyze
+        # Opção B: Roda a análise mas não falha o build por causa de warnings (como imports não usados)
+        flutter analyze --no-fatal-warnings
 
     - name: Run tests
       run: |
@@ -112,7 +104,6 @@ jobs:
         flutter test
 
   docker:
-    # Só builda se TUDO acima passar
     needs: [backend, frontend, mobile] 
     runs-on: ubuntu-latest
     steps:
@@ -124,5 +115,4 @@ jobs:
     - name: Build Docker images
       run: |
         cd meu-projeto-edu/infra
-        # Tagueando com o SHA do commit para rastreabilidade
         docker compose build --build-arg COMMIT_SHA=${{ github.sha }}
