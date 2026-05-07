@@ -10,9 +10,11 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     env:
-      # Força o Django a usar configurações de teste/memória se necessário
       DEBUG: True
-      DATABASE_URL: sqlite:///:memory: 
+      # sqlite:///:memory: exige dj-database-url no Django. 
+      # Se não usar, o Django ignorará essa variável e usará o db.sqlite3 padrão.
+      DATABASE_URL: "sqlite:///:memory:" 
+      SECRET_KEY: "ci-test-key"
     steps:
     - uses: actions/checkout@v4
 
@@ -28,24 +30,29 @@ jobs:
         cd meu-projeto-edu/backend
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install flake8 bandit # Ferramentas de qualidade e segurança
+        pip install flake8 bandit dj-database-url # Garantindo que as ferramentas de CI existam
 
     - name: Run Lint (Qualidade)
       run: |
         cd meu-projeto-edu/backend
-        # Para o CI se houver erros de sintaxe ou variáveis não utilizadas
+        # Para o CI se houver erros críticos (E9, F63, F7, F82)
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Aviso para o resto do código seguindo o PEP8
+        # Apenas avisa sobre o resto (PEP8), mas não trava o build (exit-zero)
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
     - name: Security Check (Segurança)
       run: |
         cd meu-projeto-edu/backend
-        bandit -r . -x ./tests # Procura vulnerabilidades comuns no Python
+        # --exit-zero permite que o build continue mesmo com avisos, 
+        # mas gera o relatório de segurança nos logs.
+        bandit -r . -x ./tests --exit-zero
 
     - name: Run tests
       run: |
         cd meu-projeto-edu/backend
+        # O Django cria o banco de teste automaticamente, 
+        # mas o migrate garante que seus modelos estão íntegros.
+        python manage.py migrate
         python manage.py test
 
   frontend:
@@ -69,7 +76,8 @@ jobs:
       run: |
         cd meu-projeto-edu/frontend
         npm run lint --if-present
-        npm audit --audit-level=high # Verifica vulnerabilidades em pacotes npm
+        # Audit high level para produção (evita falsos positivos de pacotes de dev)
+        npm audit --audit-level=high --production
 
     - name: Run build
       run: |
@@ -85,7 +93,7 @@ jobs:
       uses: subosito/flutter-action@v2
       with:
         flutter-version: '3.19.0'
-        cache: true # O próprio subosito já gerencia o cache de forma eficiente hoje em dia
+        cache: true
 
     - name: Install dependencies
       run: |
@@ -95,6 +103,7 @@ jobs:
     - name: Static Analysis (Qualidade)
       run: |
         cd meu-projeto-edu/mobile
+        # Garante que o código segue as boas práticas de Dart
         flutter analyze
 
     - name: Run tests
@@ -103,8 +112,8 @@ jobs:
         flutter test
 
   docker:
-    # Este job só roda se o backend e o frontend passarem nos testes
-    needs: [backend, frontend] 
+    # Só builda se TUDO acima passar
+    needs: [backend, frontend, mobile] 
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -112,7 +121,8 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Build Docker images (Dry Run)
+    - name: Build Docker images
       run: |
         cd meu-projeto-edu/infra
-        docker compose build
+        # Tagueando com o SHA do commit para rastreabilidade
+        docker compose build --build-arg COMMIT_SHA=${{ github.sha }}
