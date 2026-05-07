@@ -1,0 +1,75 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - name: Install dependencies
+      run: |
+        cd meu-projeto-edu/backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Run migrations
+      run: |
+        cd meu-projeto-edu/backend
+        python manage.py migrate
+    - name: Run tests
+      run: |
+        cd meu-projeto-edu/backend
+        python manage.py test
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: meu-projeto-edu/frontend/package-lock.json
+    - name: Install dependencies
+      run: |
+        cd meu-projeto-edu/frontend
+        npm ci
+    - name: Run build
+      run: |
+        cd meu-projeto-edu/frontend
+        npm run build
+
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.19.0'
+    - name: Install dependencies
+      run: |
+        cd meu-projeto-edu/mobile
+        flutter pub get
+    - name: Run tests
+      run: |
+        cd meu-projeto-edu/mobile
+        flutter test
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build Docker images
+      run: |
+        cd meu-projeto-edu/infra
+        docker-compose build
