@@ -1,0 +1,25 @@
+name: meu_projeto_edu_mobile
+description: Flutter mobile app for Meu Projeto Edu with offline-first sync.
+publish_to: 'none'
+version: 0.1.0+1
+environment:
+  sdk: '>=3.1.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.5
+  flutter_riverpod: ^2.5.0
+  dio: ^6.1.0
+  connectivity_plus: ^4.0.2
+  sqflite: ^2.2.8
+  path_provider: ^2.0.17
+  path: ^1.8.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
