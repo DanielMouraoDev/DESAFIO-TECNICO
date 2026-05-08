@@ -28,6 +28,35 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
 
+type AuthState = {
+  accessToken: string | null;
+  refreshToken: string | null;
+  user: StoredAuthUser | null;
+  isHydrated: boolean;
+};
+
+function getInitialAuthState(): AuthState {
+  if (typeof window === "undefined") {
+    return {
+      accessToken: null,
+      refreshToken: null,
+      user: null,
+      isHydrated: false,
+    };
+  }
+
+  const cookieAccess = getCookie(ACCESS_COOKIE);
+  const cookieRefresh = getCookie(REFRESH_COOKIE);
+  const { accessToken: lsAccess, refreshToken: lsRefresh, user: lsUser } = readLocalStorageAuth();
+
+  return {
+    accessToken: cookieAccess ?? lsAccess,
+    refreshToken: cookieRefresh ?? lsRefresh,
+    user: lsUser,
+    isHydrated: true,
+  };
+}
+
 async function loginRequest(args: { username: string; password: string }) {
   const res = await fetch(`${API_BASE_URL}/login`, {
     method: "POST",
@@ -55,36 +84,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [refreshToken, setRefreshToken] = useState<string | null>(null);
-  const [user, setUser] = useState<StoredAuthUser | null>(null);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [authState, setAuthState] = useState<AuthState>(() => getInitialAuthState());
+  const { accessToken, refreshToken, user, isHydrated } = authState;
 
-  // Hydrate auth state on refresh (cookie + localStorage).
+  // Keep cookies in sync for middleware checks when state comes from localStorage.
   useEffect(() => {
+    if (!isHydrated) return;
+
     const cookieAccess = getCookie(ACCESS_COOKIE);
     const cookieRefresh = getCookie(REFRESH_COOKIE);
 
-    const { accessToken: lsAccess, refreshToken: lsRefresh, user: lsUser } = readLocalStorageAuth();
-
-    const finalAccess = cookieAccess ?? lsAccess;
-    const finalRefresh = cookieRefresh ?? lsRefresh;
-    const finalUser = lsUser;
-
-    // If the user has tokens in localStorage but the cookie is missing, sync them
-    // so middleware protection on F5 works correctly.
-    if (finalAccess && !cookieAccess) {
-      setCookie(ACCESS_COOKIE, finalAccess, { maxAgeSeconds: 60 * 60 });
+    if (accessToken && !cookieAccess) {
+      setCookie(ACCESS_COOKIE, accessToken, { maxAgeSeconds: 60 * 60 });
     }
-    if (finalRefresh && !cookieRefresh) {
-      setCookie(REFRESH_COOKIE, finalRefresh, { maxAgeSeconds: 60 * 60 * 24 * 7 });
+    if (refreshToken && !cookieRefresh) {
+      setCookie(REFRESH_COOKIE, refreshToken, { maxAgeSeconds: 60 * 60 * 24 * 7 });
     }
-
-    setAccessToken(finalAccess);
-    setRefreshToken(finalRefresh);
-    setUser(finalUser);
-    setIsHydrated(true);
-  }, []);
+  }, [accessToken, refreshToken, isHydrated]);
 
   // Redirect after hydration.
   useEffect(() => {
@@ -119,9 +135,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setCookie(REFRESH_COOKIE, nextRefresh, { maxAgeSeconds: 60 * 60 * 24 * 7 });
       }
 
-      setAccessToken(nextAccess);
-      setRefreshToken(nextRefresh);
-      setUser(nextUser);
+      setAuthState({
+        accessToken: nextAccess,
+        refreshToken: nextRefresh,
+        user: nextUser,
+        isHydrated: true,
+      });
 
       if (pathname === "/login") {
         router.replace("/dashboard");
@@ -137,9 +156,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearCookie(REFRESH_COOKIE);
     clearLocalStorageAuth();
 
-    setAccessToken(null);
-    setRefreshToken(null);
-    setUser(null);
+    setAuthState({
+      accessToken: null,
+      refreshToken: null,
+      user: null,
+      isHydrated: true,
+    });
 
     router.replace("/login");
   }, [router]);
