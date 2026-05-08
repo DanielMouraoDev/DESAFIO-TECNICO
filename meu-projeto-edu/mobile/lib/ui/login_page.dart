@@ -48,10 +48,12 @@ class _LoginPageState extends State<LoginPage> {
       final responseData = error.response?.data;
       final message = responseData != null
           ? responseData.toString()
-          : 'Login failed. Check your credentials.';
+          : 'Login failed (${error.type}). '
+              'Cannot reach API at ${ApiClient.baseUrl}. '
+              'Details: ${error.message ?? "unknown error"}';
       _showMessage(message);
-    } catch (_) {
-      _showMessage('Login failed. Please try again later.');
+    } catch (error) {
+      _showMessage('Login failed: $error');
     } finally {
       if (mounted) {
         setState(() {

@@ -52,10 +52,12 @@ class _RegisterPageState extends State<RegisterPage> {
       final responseData = error.response?.data;
       final message = responseData != null
           ? responseData.toString()
-          : 'Registration failed. Please try again.';
+          : 'Registration failed (${error.type}). '
+              'Cannot reach API at ${ApiClient.baseUrl}. '
+              'Details: ${error.message ?? "unknown error"}';
       _showMessage(message);
-    } catch (_) {
-      _showMessage('Registration failed. Please try again later.');
+    } catch (error) {
+      _showMessage('Registration failed: $error');
     } finally {
       if (mounted) {
         setState(() {

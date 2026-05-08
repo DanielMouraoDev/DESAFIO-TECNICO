@@ -4,18 +4,18 @@ from ninja import NinjaAPI
 from ninja_jwt.authentication import JWTAuth
 from ninja_jwt.tokens import RefreshToken
 
-from .schemas import CourseIn, CourseOut, LoginIn, RegisterIn, TokenOut, RegisterOut, ReviewIn
+from .schemas import CourseIn, CourseOut, LoginIn, RegisterIn, TokenOut, RegisterOut, ReviewIn, ErrorOut
 from .services import CourseService
 
 api = NinjaAPI()
 
 # JWT Authentication endpoints
-@api.post("/login", response=TokenOut)
+@api.post("/login", response={200: TokenOut, 401: ErrorOut})
 def obtain_token(request, payload: LoginIn):
     from django.contrib.auth import authenticate
     user = authenticate(username=payload.username, password=payload.password)
     if user is None:
-        return {"error": "Invalid credentials"}
+        return 401, {"error": "Invalid credentials"}
     
     refresh = RefreshToken.for_user(user)
     return {
@@ -24,7 +24,7 @@ def obtain_token(request, payload: LoginIn):
         "user": {"id": user.id, "username": user.username, "email": user.email}
     }
 
-@api.post("/refresh")
+@api.post("/refresh", response={200: dict, 401: ErrorOut})
 def refresh_token(request, refresh: str):
     from ninja_jwt.tokens import RefreshToken
     try:
@@ -32,21 +32,21 @@ def refresh_token(request, refresh: str):
         return {
             "access": str(token.access_token),
         }
-    except Exception as e:
-        return {"error": "Invalid refresh token"}
+    except Exception:
+        return 401, {"error": "Invalid refresh token"}
 
 # Custom register endpoint
-@api.post("/register", response=RegisterOut)
+@api.post("/register", response={201: RegisterOut, 409: ErrorOut})
 def register(request, payload: RegisterIn):
     from django.contrib.auth.models import User
     if User.objects.filter(username=payload.username).exists():
-        return {"error": "Username already exists"}
+        return 409, {"error": "Username already exists"}
     if User.objects.filter(email=payload.email).exists():
-        return {"error": "Email already exists"}
+        return 409, {"error": "Email already exists"}
     
     user = User.objects.create_user(username=payload.username, email=payload.email, password=payload.password)
     refresh = RefreshToken.for_user(user)
-    return {
+    return 201, {
         "user": {"id": user.id, "username": user.username, "email": user.email},
         "tokens": {
             "refresh": str(refresh),

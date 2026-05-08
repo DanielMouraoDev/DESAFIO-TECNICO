@@ -26,6 +26,9 @@ class RegisterIn(Schema):
     email: str
     password: str
 
+class ErrorOut(Schema):
+    error: str
+
 class TokenOut(Schema):
     refresh: str
     access: str
