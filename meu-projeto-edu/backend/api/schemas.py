@@ -1,3 +1,4 @@
+import datetime
 from ninja import Schema
 
 class CourseIn(Schema):
@@ -10,6 +11,11 @@ class CourseOut(Schema):
     title: str
     description: str
     active: bool
+    next_review: datetime.datetime
+    interval: int
+
+class ReviewIn(Schema):
+    quality: int  # 0 to 5
 
 class LoginIn(Schema):
     username: str

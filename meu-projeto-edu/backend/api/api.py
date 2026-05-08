@@ -4,7 +4,7 @@ from ninja import NinjaAPI
 from ninja_jwt.authentication import JWTAuth
 from ninja_jwt.tokens import RefreshToken
 
-from .schemas import CourseIn, CourseOut, LoginIn, RegisterIn, TokenOut, RegisterOut
+from .schemas import CourseIn, CourseOut, LoginIn, RegisterIn, TokenOut, RegisterOut, ReviewIn
 from .services import CourseService
 
 api = NinjaAPI()
@@ -68,3 +68,8 @@ def get_course(request, course_id: int):
 @api.post("/courses", response=CourseOut, auth=JWTAuth())
 def create_course(request, payload: CourseIn):
     return CourseService.create_course(payload)
+
+
+@api.post("/courses/{course_id}/review", response=CourseOut, auth=JWTAuth())
+def review_course(request, course_id: int, payload: ReviewIn):
+    return CourseService.process_review(course_id, payload.quality)
