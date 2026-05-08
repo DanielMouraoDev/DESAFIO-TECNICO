@@ -1,6 +1,6 @@
 from django.utils import timezone
 from datetime import timedelta
-from .models import Course
+from .models import Course, Flashcard
 from .schemas import CourseIn
 
 class CourseService:
@@ -52,3 +52,56 @@ class CourseService:
         course.save()
         
         return course
+
+
+class FlashcardService:
+    @staticmethod
+    def create_flashcard(*, user, front: str, back: str) -> Flashcard:
+        return Flashcard.objects.create(user=user, front=front, back=back)
+
+    @staticmethod
+    def list_due_flashcards(*, user):
+        return (
+            Flashcard.objects.filter(user=user, next_review__lte=timezone.now())
+            .order_by("next_review", "id")
+        )
+
+    @staticmethod
+    def review_flashcard(*, user, flashcard_id: int, grade: int) -> Flashcard:
+        """
+        SM-2 simplified.
+        grade: 1..5 (1=hard/forgot, 5=easy/perfect)
+
+        Requirements hint:
+        - if easy -> next review in 4 days (early steps)
+        - if ok -> next review in 1 day (early steps)
+        """
+        if grade < 1 or grade > 5:
+            raise ValueError("grade must be between 1 and 5")
+
+        card = Flashcard.objects.get(pk=flashcard_id, user=user)
+        now = timezone.now()
+
+        if grade < 3:
+            # Relearn quickly
+            card.interval = 1
+            card.easiness = max(1.3, card.easiness - 0.2)
+        else:
+            if card.interval <= 0:
+                card.interval = 1
+            elif card.interval == 1:
+                # "Easy" tends to push further; keep it simple (1 or 4)
+                card.interval = 4 if grade >= 4 else 1
+            else:
+                card.interval = max(1, int(round(card.interval * card.easiness)))
+
+            # Update easiness factor (classic SM-2 formula)
+            card.easiness = max(
+                1.3,
+                card.easiness
+                + (0.1 - (5 - grade) * (0.08 + (5 - grade) * 0.02)),
+            )
+
+        card.next_review = now + timedelta(days=card.interval)
+        card.save(update_fields=["interval", "easiness", "next_review", "updated_at"])
+        return card

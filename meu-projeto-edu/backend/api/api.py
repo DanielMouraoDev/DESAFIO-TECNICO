@@ -4,8 +4,21 @@ from ninja import NinjaAPI
 from ninja_jwt.authentication import JWTAuth
 from ninja_jwt.tokens import RefreshToken
 
-from .schemas import CourseIn, CourseOut, LoginIn, RegisterIn, TokenOut, RegisterOut, ReviewIn, ErrorOut
-from .services import CourseService
+from .schemas import (
+    CourseIn,
+    CourseOut,
+    LoginIn,
+    RegisterIn,
+    TokenOut,
+    RegisterOut,
+    ReviewIn,
+    ErrorOut,
+    FlashcardIn,
+    FlashcardOut,
+    FlashcardReviewIn,
+)
+from .services import CourseService, FlashcardService
+from .models import Flashcard
 
 api = NinjaAPI()
 
@@ -73,3 +86,26 @@ def create_course(request, payload: CourseIn):
 @api.post("/courses/{course_id}/review", response=CourseOut, auth=JWTAuth())
 def review_course(request, course_id: int, payload: ReviewIn):
     return CourseService.process_review(course_id, payload.quality)
+
+
+# Flashcards (Spaced Repetition)
+@api.post("/flashcards", response={201: FlashcardOut}, auth=JWTAuth())
+def create_flashcard(request, payload: FlashcardIn):
+    card = FlashcardService.create_flashcard(user=request.user, front=payload.front, back=payload.back)
+    return 201, card
+
+
+@api.get("/flashcards/study", response=List[FlashcardOut], auth=JWTAuth())
+def list_due_flashcards(request):
+    return list(FlashcardService.list_due_flashcards(user=request.user))
+
+
+@api.post("/flashcards/{flashcard_id}/review", response={200: FlashcardOut, 400: ErrorOut, 404: ErrorOut}, auth=JWTAuth())
+def review_flashcard(request, flashcard_id: int, payload: FlashcardReviewIn):
+    try:
+        card = FlashcardService.review_flashcard(user=request.user, flashcard_id=flashcard_id, grade=payload.grade)
+        return card
+    except ValueError as e:
+        return 400, {"error": str(e)}
+    except Flashcard.DoesNotExist:
+        return 404, {"error": "Flashcard not found"}

@@ -37,3 +37,21 @@ class TokenOut(Schema):
 class RegisterOut(Schema):
     user: dict
     tokens: dict
+
+
+class FlashcardIn(Schema):
+    front: str
+    back: str
+
+
+class FlashcardOut(Schema):
+    id: int
+    front: str
+    back: str
+    interval: int
+    easiness: float
+    next_review: datetime.datetime
+
+
+class FlashcardReviewIn(Schema):
+    grade: int  # 1 to 5
