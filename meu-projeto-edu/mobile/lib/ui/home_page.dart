@@ -101,10 +101,14 @@ class _HomePageState extends ConsumerState<HomePage> {
                 if (title.isEmpty || description.isEmpty) {
                   return;
                 }
+                final dialogContext = context;
                 await ref.read(courseListProvider.notifier).addCourse(title, description);
+                if (!mounted) {
+                  return;
+                }
                 _titleController.clear();
                 _descriptionController.clear();
-                Navigator.of(context).pop();
+                Navigator.of(dialogContext).pop();
               },
             ),
           ],
