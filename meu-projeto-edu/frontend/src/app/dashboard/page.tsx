@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { AuthGate } from "@/auth/AuthGate";
 import { useAuth } from "@/auth/AuthProvider";
 
@@ -71,6 +72,12 @@ function DashboardContent() {
               Signed in as <code>{user?.username ?? "user"}</code>
             </p>
           </div>
+          <Link
+            href="/dashboard/study"
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            Study Flashcards
+          </Link>
         </div>
 
         <div className="mt-6">
