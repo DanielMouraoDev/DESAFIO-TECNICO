@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/course.dart';
 import '../state/course_notifier.dart';
+import 'study_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -31,6 +32,23 @@ class _HomePageState extends ConsumerState<HomePage> {
         title: const Text('Meu Projeto Edu'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.menu_book),
+            tooltip: 'Study cards',
+            onPressed: () {
+              final courses = ref.read(courseListProvider);
+              courses.when(
+                data: (list) => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => StudyPage(cards: list),
+                  ),
+                ),
+                loading: () {},
+                error: (_, __) {},
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.read(courseListProvider.notifier).refresh(),
           ),
@@ -49,6 +67,12 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Widget _buildContent(List<Course> courses) {
+    if (courses.isEmpty) {
+      return const Center(
+        child: Text('No cards available yet. Create one to start studying.'),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.all(16.0),
       itemCount: courses.length,
@@ -72,17 +96,17 @@ class _HomePageState extends ConsumerState<HomePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Novo curso'),
+          title: const Text('New Card'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: _titleController,
-                decoration: const InputDecoration(labelText: 'Título'),
+                decoration: const InputDecoration(labelText: 'Front (question)'),
               ),
               TextField(
                 controller: _descriptionController,
-                decoration: const InputDecoration(labelText: 'Descrição'),
+                decoration: const InputDecoration(labelText: 'Back (answer)'),
               ),
             ],
           ),

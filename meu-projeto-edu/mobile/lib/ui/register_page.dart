@@ -40,10 +40,14 @@ class _RegisterPageState extends State<RegisterPage> {
     });
 
     try {
-      await _apiClient.register(username, email, password);
-      if (!mounted) return;
-      _showMessage('Account created successfully. Please log in.');
-      Navigator.pop(context);
+      final response = await _apiClient.register(username, email, password);
+      if (response.containsKey('error')) {
+        _showMessage(response['error'].toString());
+      } else {
+        if (!mounted) return;
+        _showMessage('Account created successfully. You are now logged in.');
+        Navigator.pushReplacementNamed(context, '/home');
+      }
     } on DioException catch (error) {
       final responseData = error.response?.data;
       final message = responseData != null

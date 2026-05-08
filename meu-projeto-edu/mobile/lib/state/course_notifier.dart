@@ -55,6 +55,7 @@ class CourseNotifier extends StateNotifier<AsyncValue<List<Course>>> {
   Future<void> refresh() async {
     state = const AsyncValue.loading();
     try {
+      await syncManager.initialize();
       final courses = await repository.loadCourses();
       state = AsyncValue.data(courses);
     } catch (e, st) {

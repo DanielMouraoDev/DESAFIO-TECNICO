@@ -16,23 +16,22 @@ class SyncManager {
   Future<void> initialize() async {
     final result = await _connectivity.checkConnectivity();
     if (result != ConnectivityResult.none) {
-      await _syncPending();
+      try {
+        await repository.syncPendingCourses();
+        await repository.syncRemoteCourses();
+      } catch (_) {
+        // Keep local content available even if remote synchronization fails.
+      }
     }
   }
 
   Future<void> _onConnectivityChanged(ConnectivityResult result) async {
     if (result != ConnectivityResult.none) {
-      await _syncPending();
-    }
-  }
-
-  Future<void> _syncPending() async {
-    final pendingCourses = await repository.getPendingSyncCourses();
-    for (final course in pendingCourses) {
       try {
-        await repository.syncCourse(course);
+        await repository.syncPendingCourses();
+        await repository.syncRemoteCourses();
       } catch (_) {
-        // Keep the pending record for later retry.
+        // Keep local content available even if remote synchronization fails.
       }
     }
   }

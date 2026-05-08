@@ -29,9 +29,29 @@ class CourseRepository {
   }
 
   Future<void> syncCourse(Course course) async {
-    await apiClient.createCourse(course.toApiJson());
+    final response = await apiClient.createCourse(course.toApiJson());
     if (course.id != null) {
-      await localDatabase.markCourseSynced(course.id!);
+      final remoteId = response['id'] as int?;
+      await localDatabase.markCourseSynced(course.id!, remoteId: remoteId);
+    }
+  }
+
+  Future<void> syncRemoteCourses() async {
+    final remoteCourses = await apiClient.fetchCourses();
+    final courses = remoteCourses
+        .map((json) => Course.fromApi(json))
+        .toList();
+    await localDatabase.saveCourses(courses);
+  }
+
+  Future<void> syncPendingCourses() async {
+    final pendingCourses = await getPendingSyncCourses();
+    for (final course in pendingCourses) {
+      try {
+        await syncCourse(course);
+      } catch (_) {
+        // Keep the pending course until the next retry.
+      }
     }
   }
 }

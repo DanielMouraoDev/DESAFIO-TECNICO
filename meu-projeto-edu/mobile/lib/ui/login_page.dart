@@ -37,9 +37,13 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      await _apiClient.login(username, password);
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/home');
+      final response = await _apiClient.login(username, password);
+      if (response.containsKey('error')) {
+        _showMessage(response['error'].toString());
+      } else {
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/home');
+      }
     } on DioException catch (error) {
       final responseData = error.response?.data;
       final message = responseData != null
