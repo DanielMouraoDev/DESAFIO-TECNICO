@@ -4,7 +4,8 @@ import 'package:dio/dio.dart';
 class ApiClient {
   static const _envBaseUrl = String.fromEnvironment('API_BASE_URL');
   static const _androidBaseUrl = 'http://10.0.2.2:8000/api';
-  static const _desktopBaseUrl = 'http://localhost:8000/api';
+  // Use 127.0.0.1 instead of localhost to avoid IPv6 (::1) resolution issues on Windows.
+  static const _desktopBaseUrl = 'http://127.0.0.1:8000/api';
   static String? _accessToken;
   static String? _refreshToken;
 
