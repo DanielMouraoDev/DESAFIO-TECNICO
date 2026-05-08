@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 
-import '../models/course.dart';
 import '../repositories/course_repository.dart';
 
 class SyncManager {
