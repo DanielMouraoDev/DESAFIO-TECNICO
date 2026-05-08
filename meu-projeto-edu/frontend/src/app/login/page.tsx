@@ -1,21 +1,20 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/auth/AuthProvider";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [from, setFrom] = useState<string | null>(null);
+  const [from] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("from");
+  });
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setFrom(params.get("from"));
-  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
