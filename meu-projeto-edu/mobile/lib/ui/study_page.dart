@@ -60,25 +60,21 @@ class _StudyPageState extends State<StudyPage> {
             Expanded(
               child: GestureDetector(
                 onTap: _flipCard,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  transitionBuilder: (child, animation) {
-                    return RotationYTransition(
-                      turns: animation,
-                      child: child,
-                    );
-                  },
-                  child: _showFront
-                      ? _buildCardSide(
-                          text: card.title,
-                          label: 'Front',
-                          key: const ValueKey('front'),
-                        )
-                      : _buildCardSide(
-                          text: card.description,
-                          label: 'Back',
-                          key: const ValueKey('back'),
-                        ),
+                child: AnimatedCrossFade(
+                  firstChild: _buildCardSide(
+                    text: card.title,
+                    label: 'Front',
+                    key: const ValueKey('front'),
+                  ),
+                  secondChild: _buildCardSide(
+                    text: card.description,
+                    label: 'Back',
+                    key: const ValueKey('back'),
+                  ),
+                  crossFadeState: _showFront ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+                  duration: const Duration(milliseconds: 250),
+                  firstCurve: Curves.easeOut,
+                  secondCurve: Curves.easeOut,
                 ),
               ),
             ),
@@ -134,24 +130,6 @@ class _StudyPageState extends State<StudyPage> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class RotationYTransition extends AnimatedWidget {
-  final Widget child;
-
-  const RotationYTransition({super.key, required Animation<double> turns, required this.child})
-      : super(listenable: turns);
-
-  @override
-  Widget build(BuildContext context) {
-    final animation = listenable as Animation<double>;
-    final rotation = animation.value * 3.141592653589793;
-    return Transform(
-      transform: Matrix4.rotationY(rotation),
-      alignment: Alignment.center,
-      child: child,
     );
   }
 }

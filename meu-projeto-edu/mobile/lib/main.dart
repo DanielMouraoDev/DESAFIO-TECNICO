@@ -1,11 +1,19 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'ui/home_page.dart';
 import 'ui/login_page.dart';
 import 'ui/register_page.dart';
 
 void main() {
+  // Se estiver no Windows ou Linux, initialize o driver FFI.
+  if (Platform.isWindows || Platform.isLinux) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
+
   runApp(const ProviderScope(child: MeuProjetoEduApp()));
 }
 
