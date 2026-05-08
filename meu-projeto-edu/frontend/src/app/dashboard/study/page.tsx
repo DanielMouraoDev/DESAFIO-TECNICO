@@ -26,7 +26,7 @@ export default function StudyPage() {
 }
 
 function StudyContent() {
-  const { accessToken } = useAuth();
+  const { accessToken, isHydrated } = useAuth();
   const queryClient = useQueryClient();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showBack, setShowBack] = useState(false);
@@ -43,6 +43,7 @@ function StudyContent() {
       if (!res.ok) throw new Error("Failed to fetch flashcards");
       return res.json() as Promise<Flashcard[]>;
     },
+    enabled: !!accessToken && isHydrated,
   });
 
   const reviewMutation = useMutation({
@@ -65,6 +66,18 @@ function StudyContent() {
     },
   });
 
+  // Don't render until hydrated to prevent hydration mismatch
+  if (!isHydrated) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4">
+        <div className="max-w-md mx-auto">
+          <h1 className="text-2xl font-bold mb-6 text-center">Daily Study</h1>
+          <div className="text-center">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) return <div className="p-4">Loading flashcards...</div>;
   if (error) return <div className="p-4 text-red-500">Error: {error.message}</div>;
   if (!flashcards || flashcards.length === 0) {
@@ -84,7 +97,7 @@ function StudyContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50 p-4" suppressHydrationWarning>
       <div className="max-w-md mx-auto">
         <h1 className="text-2xl font-bold mb-6 text-center">Daily Study</h1>
 

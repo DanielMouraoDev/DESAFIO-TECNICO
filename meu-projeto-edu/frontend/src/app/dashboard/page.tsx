@@ -25,7 +25,7 @@ export default function DashboardPage() {
 }
 
 function DashboardContent() {
-  const { accessToken, user } = useAuth();
+  const { accessToken, user, isHydrated } = useAuth();
   const [courses, setCourses] = useState<Course[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,8 +62,26 @@ function DashboardContent() {
     if (accessToken) load();
   }, [accessToken]);
 
+  // Don't render until hydrated to prevent hydration mismatch
+  if (!isHydrated) {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-black px-4 py-8">
+        <div className="mx-auto w-full max-w-3xl">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-semibold">Dashboard</h1>
+              <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+                Loading...
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black px-4 py-8">
+    <div className="min-h-screen bg-zinc-50 dark:bg-black px-4 py-8" suppressHydrationWarning>
       <div className="mx-auto w-full max-w-3xl">
         <div className="flex items-start justify-between gap-4">
           <div>
