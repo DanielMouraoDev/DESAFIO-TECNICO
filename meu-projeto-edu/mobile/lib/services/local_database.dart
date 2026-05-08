@@ -88,6 +88,7 @@ class LocalDatabase {
     final db = await database;
     await db.transaction((txn) async {
       for (final course in courses) {
+        // First try to match by remote_id
         if (course.remoteId != null) {
           final rows = await txn.query(
             'courses',
@@ -106,6 +107,28 @@ class LocalDatabase {
             continue;
           }
         }
+
+        // If not found by remote_id, try to match by title and description
+        // to avoid duplicating local items that were just synced or are pending.
+        final localMatch = await txn.query(
+          'courses',
+          where: 'title = ? AND description = ? AND remote_id IS NULL',
+          whereArgs: [course.title, course.description],
+          limit: 1,
+        );
+
+        if (localMatch.isNotEmpty) {
+          final existing = Course.fromMap(localMatch.first);
+          await txn.update(
+            'courses',
+            course.copyWith(id: existing.id, pendingSync: false).toMap(),
+            where: 'id = ?',
+            whereArgs: [existing.id],
+          );
+          continue;
+        }
+
+        // If no match found, insert as new
         await txn.insert('courses', course.toMap());
       }
     });

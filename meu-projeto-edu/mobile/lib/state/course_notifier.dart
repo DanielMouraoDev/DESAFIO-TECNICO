@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/course.dart';
@@ -24,29 +25,47 @@ final courseListProvider = StateNotifierProvider<CourseNotifier, AsyncValue<List
 class CourseNotifier extends StateNotifier<AsyncValue<List<Course>>> {
   final CourseRepository repository;
   final SyncManager syncManager;
+  StreamSubscription? _syncSubscription;
 
   CourseNotifier(this.repository, this.syncManager) : super(const AsyncValue.loading()) {
     _loadCourses();
+    // Listen for sync completions to update the UI automatically
+    _syncSubscription = syncManager.onSyncComplete.listen((_) => _reloadLocalData());
+  }
+
+  @override
+  void dispose() {
+    _syncSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadCourses() async {
     try {
       await syncManager.initialize();
-      final courses = await repository.loadCourses();
-      state = AsyncValue.data(courses);
+      await _reloadLocalData();
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
   }
 
+  Future<void> _reloadLocalData() async {
+    final courses = await repository.loadCourses();
+    state = AsyncValue.data(courses);
+  }
+
   Future<void> addCourse(String title, String description) async {
-    state = const AsyncValue.loading();
+    // 1. Optimistic update or just show loading
     try {
+      // Save locally (offline-first)
       await repository.createCourse(
         Course(title: title, description: description, pendingSync: true),
       );
-      final courses = await repository.loadCourses();
-      state = AsyncValue.data(courses);
+      
+      // Update UI with local data
+      await _reloadLocalData();
+
+      // Trigger sync in background
+      syncManager.initialize();
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -56,8 +75,7 @@ class CourseNotifier extends StateNotifier<AsyncValue<List<Course>>> {
     state = const AsyncValue.loading();
     try {
       await syncManager.initialize();
-      final courses = await repository.loadCourses();
-      state = AsyncValue.data(courses);
+      await _reloadLocalData();
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
