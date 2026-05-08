@@ -16,15 +16,43 @@ services:
     build: ../backend
     environment:
       DATABASE_URL: postgresql://user:password@db:5432/meu_projeto_edu
+      TEMPORAL_HOST: temporal:7233
+      TEMPORAL_NAMESPACE: default
+      TEMPORAL_TASK_QUEUE: meu-projeto-edu
     ports:
       - "8000:8000"
     depends_on:
       - db
+      - temporal
 
   frontend:
     build: ../frontend
     ports:
       - "3000:3000"
+
+  temporal:
+    image: temporalio/auto-setup:1.27.2
+    environment:
+      DB: postgresql
+      DB_PORT: 5432
+      POSTGRES_USER: user
+      POSTGRES_PWD: password
+      POSTGRES_SEEDS: db
+      DYNAMIC_CONFIG_FILE_PATH: /etc/temporal/config/dynamicconfig/development-sql.yaml
+    depends_on:
+      - db
+    ports:
+      - "7233:7233"
+
+  temporal-ui:
+    image: temporalio/ui:2.34.0
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:3000
+    depends_on:
+      - temporal
+    ports:
+      - "8080:8080"
 
 volumes:
   postgres_data:

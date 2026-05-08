@@ -161,3 +161,8 @@ NINJA_JWT = {
 # Keep permissive in development; tighten in production via CORS_ALLOWED_ORIGINS.
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
+
+# Temporal defaults (override via environment variables in Docker/CI).
+TEMPORAL_HOST = os.getenv("TEMPORAL_HOST", "localhost:7233")
+TEMPORAL_NAMESPACE = os.getenv("TEMPORAL_NAMESPACE", "default")
+TEMPORAL_TASK_QUEUE = os.getenv("TEMPORAL_TASK_QUEUE", "meu-projeto-edu")
